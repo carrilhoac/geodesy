@@ -342,7 +342,7 @@ void Spheroid<FloatType>::utmToGeo(
   FloatType aproxT = std::tan(cnfLat);
   FloatType initialT = aproxT;
 
-  for (int i = 0; i < 25; i++)
+  for (int itrCount = 0; itrCount < 25; itrCount++)
   {
     // helpers
     FloatType oneT = std::sqrt(FloatType(1) + aproxT * aproxT);
@@ -575,15 +575,14 @@ const {
       (FloatType(2) * std::sin(U1) * std::sin(U2) / alphaCosSqr);
     twoSigmaCosSqr = twoSigmaCos * twoSigmaCos ;
 
-    h0 = FloatType(4) + flattening * (FloatType(4) - FloatType(3) * alphaCosSqr);
-    FloatType C = (flattening / FloatType(16)) * alphaCosSqr * h0;
+    FloatType C = (flattening / FloatType(16)) * alphaCosSqr * 
+      (FloatType(4) + flattening * (FloatType(4) - FloatType(3) * alphaCosSqr));
     
-    h1 = FloatType(2) * twoSigmaCosSqr - FloatType(1); 
-    h1 = sigma + C * sigmaSin * (twoSigmaCos + C * sigmaCos * h1);
-
     // new approximation for lambda
     lambdaOld = lambda;
-    lambda = L + (FloatType(1) - C) * flattening * alphaSin * h1;
+    lambda = L + (FloatType(1) - C) * flattening * alphaSin * 
+      (sigma + C * sigmaSin * (twoSigmaCos + C * sigmaCos * 
+      (FloatType(2) * twoSigmaCosSqr - FloatType(1))));
 
     if (std::abs(lambdaOld - lambda) < std::numeric_limits<FloatType>::epsilon())
       break;
@@ -592,26 +591,17 @@ const {
   h0 = majorSemiAxis / minorSemiAxis;
   FloatType u2 = alphaCosSqr * (h0 * h0 - FloatType(1));
 
-  #if 0
-  // Original formulation Vincenty 1975
-  FloatType A = FloatType(1) + (u2 / FloatType(16384)) * 
-    (FloatType(4096) + u2 * (u2 * (FloatType(320) - FloatType(175) * u2) - FloatType(768)));
-  FloatType B = u2 / FloatType(1024) * 
-    (FloatType( 256) + u2 * (u2 * (FloatType( 74) - FloatType( 47) * u2) - FloatType(128)));
-  #else 
-  // Simpler formulation from Vincenty 1976
+  // Simpler formulation for A,B given in Vincenty 1976
   FloatType oneK1 = std::sqrt(FloatType(1) + u2);
   FloatType k1 = (oneK1 - FloatType(1)) / (oneK1 + FloatType(1));
   FloatType A = (FloatType(1) + (k1 * k1 / FloatType(4))) / (FloatType(1) - k1);
   FloatType B = k1 * (FloatType(1) - (FloatType(3) / FloatType(8)) * k1 * k1);
-  #endif
 
-  h0 = sigmaCos * (FloatType(2) * twoSigmaCosSqr - FloatType(1));
-  h1 = B / FloatType(6) * twoSigmaCos * 
-    (FloatType(4) * sigmaSin * sigmaSin -FloatType(3)) * 
-    (FloatType(4) * twoSigmaCosSqr -FloatType(3));
+  FloatType sigmaDelta = B * sigmaSin * (twoSigmaCos + (B / FloatType(4)) * 
+    ((sigmaCos * (FloatType(2) * twoSigmaCosSqr - FloatType(1))) - 
+    (B / FloatType(6) * twoSigmaCos * (FloatType(4) * sigmaSin * sigmaSin -FloatType(3)) * 
+    (FloatType(4) * twoSigmaCosSqr -FloatType(3)))));
 
-  FloatType sigmaDelta = B * sigmaSin * (twoSigmaCos + (B / FloatType(4)) * (h0 - h1));
   return minorSemiAxis * A * (sigma - sigmaDelta);
 }
 
