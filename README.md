@@ -1,9 +1,9 @@
-# geodesy
-Common Geodesy and Cartography operations. 
+Common Geodesic and Cartographic operations. 
 Inspirations taken from "Eigen", being header only. Also, the code is thread-safe.
+Conversion between Geocentric and Geodetic coordinates, UTM projection (forward and backward), and the Inverse Geodetic problem.
 
 # UTM Projection
-UTM projection with Karney-Krueger equations (less than 5 nm error on the worst case)
+UTM projection with Karney-Krueger equations (less than 5 nm error on the worst case).
 
 # Geodesy
 Geodesic distance on the Ellipsoid with Vincenty equations (less then 0.5 mm error)
