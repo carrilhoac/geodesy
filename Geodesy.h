@@ -9,6 +9,10 @@
 #ifndef _Geodesy_h
 #define _Geodesy_h 1
 
+#if __cplusplus < 201703L
+#error At least C++17 standard is need to build this code
+#endif 
+
 #include <cmath>
 #include <limits>
 
@@ -93,6 +97,8 @@ public:
     Real& latDeg,
     Real& lonDeg) const;
 
+  Real tmScaleFactor(const Real& latDeg, const Real& lonDeg) const;
+
   // Geodesic Inverse problem 
   // Vincenty equations (less than 0.5 mm error) 
   // Note: might fail for near antipodal points
@@ -112,6 +118,54 @@ private:
   inline Real utmCentralMeridian(const Real& lonDeg, int &utmZone) const;
   void computeUtmParams();
 };
+
+template<typename Real> 
+Real Spheroid<Real>::tmScaleFactor(const Real& latDeg, const Real& lonDeg) const
+// The scale factor on the Gauss-Schreiber projection is not constant along the meridian.
+// This function computes the Gauss-Schreiber scale factor, and then coverts it to the 
+// TM projection, which is constant along the meridian.
+{
+  int utmZone;
+  const Real phiRad = Math::degToRad(latDeg);
+  const Real lmbRad = Math::degToRad(lonDeg);
+  const Real cnfLat = conformalLatitude(phiRad);
+  const Real lmb0   = utmCentralMeridian(lonDeg, utmZone);
+  const Real omega  = lmbRad - lmb0;
+
+  const Real x = Math::sqr(std::tan(cnfLat)) +  Math::sqr(std::cos(omega)); 
+
+  // Gauss-Schreiber coordinates - Equation (84)
+  const Real u = majorSemiAxis * std::atan(std::tan(cnfLat) / std::cos(omega));
+  const Real v = majorSemiAxis * std::asinh(std::sin(omega) / std::sqrt(x));
+  const Real u_a = u / majorSemiAxis;
+  const Real v_a = v / majorSemiAxis;
+
+  // Equations (114)
+  Real sumX(0);
+  Real sumY(0);
+  Real t(2);
+
+  for (int i = 0; i < 8; 
+    i++, t += Real(2))
+  {
+    sumX += t* alpha[i] * 
+      std::sin(t * u_a) * std::sinh(t * v_a);
+    sumY += t* alpha[i] * 
+      std::cos(t * u_a) * std::cosh(t * v_a);
+  }
+
+  const Real q = -sumX;
+  const Real p = Real(1) + sumY;
+
+  // Gauss-Schreiber scale factor Equation (116)
+  const Real scale = 
+    std::sqrt(Real(1) + std::tan(phiRad) * std::tan(phiRad)) * 
+    std::sqrt(Real(1) - std::sin(phiRad) * std::sin(phiRad) * eccentricitySqr) / 
+    std::sqrt(std::cos(omega) * std::cos(omega) + std::tan(cnfLat) * std::tan(cnfLat));
+
+  // conversion to TM scale factor 
+  return Real(0.9996) * (rectifyingRadius / majorSemiAxis) * std::hypot(q, p) * scale;
+}
 
 template<typename Real> 
 void Spheroid<Real>::setWgs84(){
@@ -604,4 +658,3 @@ const {
 } // ns geo
 
 #endif 
-
