@@ -1,5 +1,5 @@
 
-//  Copyright (c) 2023, Andre Caceres Carrilho
+//  Copyright (c) 2023-2024, Andre Caceres Carrilho
 //
 //  Geodesy.h common geodesic routines 
 //  tags header-only, thread-safe, portable, standard-cpp
@@ -10,7 +10,7 @@
 #define _Geodesy_h 1
 
 #if __cplusplus < 201703L
-#error At least C++17 standard is need to build this code
+    #error At least C++17 standard is need to build this code
 #endif 
 
 #include <cmath>
@@ -97,7 +97,7 @@ public:
     Real& latDeg,
     Real& lonDeg) const;
 
-  Real tmScaleFactor(const Real& latDeg, const Real& lonDeg) const;
+  Real utmScaleFactor(const Real& latDeg, const Real& lonDeg) const;
 
   // Geodesic Inverse problem 
   // Vincenty equations (less than 0.5 mm error) 
@@ -120,11 +120,18 @@ private:
 };
 
 template<typename Real> 
-Real Spheroid<Real>::tmScaleFactor(const Real& latDeg, const Real& lonDeg) const
+Real Spheroid<Real>::utmScaleFactor(const Real& latDeg, const Real& lonDeg) const
+{
+#if 1
+  int utmZone; 
+  Real omega = utmCentralMeridian(lonDeg, utmZone) - Math::degToRad(lonDeg);
+
+  /// abs(err) < 5.922E-07 compared to the full formulation below
+  return Real(0.5035348161) * Math::sqr(omega) + Real(0.9996);
+#else 
 // The scale factor on the Gauss-Schreiber projection is not constant along the meridian.
 // This function computes the Gauss-Schreiber scale factor, and then coverts it to the 
 // TM projection, which is constant along the meridian.
-{
   int utmZone;
   const Real phiRad = Math::degToRad(latDeg);
   const Real lmbRad = Math::degToRad(lonDeg);
@@ -165,6 +172,7 @@ Real Spheroid<Real>::tmScaleFactor(const Real& latDeg, const Real& lonDeg) const
 
   // conversion to TM scale factor 
   return Real(0.9996) * (rectifyingRadius / majorSemiAxis) * std::hypot(q, p) * scale;
+#endif 
 }
 
 template<typename Real> 
@@ -658,3 +666,4 @@ const {
 } // ns geo
 
 #endif 
+
