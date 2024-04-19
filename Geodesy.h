@@ -33,6 +33,14 @@ namespace Math
   }
 }
 
+enum SPHEROID {
+    SPHEROID_GRS67,
+    SPHEROID_SAD69,
+    SPHEROID_WGS72,
+    SPHEROID_GRS80,
+    SPHEROID_WGS84
+};
+
 // Templated because you might want to use long double.
 // The term 'Spheroid' is what Open Geospatial Consortium uses.
 template<typename Real = double> 
@@ -56,10 +64,9 @@ public:
   {
     setFrom(majorSemiAxis_, flattening_);
   }
-
+  Spheroid(SPHEROID ellps) { set(ellps); }
+  void set(SPHEROID ellps);
   void setFrom(Real majorSemiAxis_, Real flattening_);
-  void setWgs84(); // GeoJSON only supports EPSG:4326 
-  void setGrs80(); // SIRGAS used on EPSG:4674
 
   // Conversion between Geodetic and Geocentric Cartesian coordinates,
   // which is also known as Earth Centered, Earth Fixed (ECEF)
@@ -97,9 +104,9 @@ public:
     Real& latDeg,
     Real& lonDeg) const;
 
-  Real utmScaleFactor(const Real& latDeg, const Real& lonDeg) const;
+  Real utmScaleFactor(const Real& lonDeg) const;
 
-  // Geodesic Inverse problem 
+  // Inverse Geodesic problem 
   // Vincenty equations (less than 0.5 mm error) 
   // Note: might fail for near antipodal points
   Real distance(
@@ -120,69 +127,26 @@ private:
 };
 
 template<typename Real> 
-Real Spheroid<Real>::utmScaleFactor(const Real& latDeg, const Real& lonDeg) const
+void Spheroid<Real>::set(SPHEROID ellps)
 {
-#if 1
-  int utmZone; 
-  Real omega = utmCentralMeridian(lonDeg, utmZone) - Math::degToRad(lonDeg);
-
-  /// abs(err) < 5.922E-07 compared to the full formulation below
-  return Real(0.5035348161) * Math::sqr(omega) + Real(0.9996);
-#else 
-// The scale factor on the Gauss-Schreiber projection is not constant along the meridian.
-// This function computes the Gauss-Schreiber scale factor, and then coverts it to the 
-// TM projection, which is constant along the meridian.
-  int utmZone;
-  const Real phiRad = Math::degToRad(latDeg);
-  const Real lmbRad = Math::degToRad(lonDeg);
-  const Real cnfLat = conformalLatitude(phiRad);
-  const Real lmb0   = utmCentralMeridian(lonDeg, utmZone);
-  const Real omega  = lmbRad - lmb0;
-
-  const Real x = Math::sqr(std::tan(cnfLat)) +  Math::sqr(std::cos(omega)); 
-
-  // Gauss-Schreiber coordinates - Equation (84)
-  const Real u = majorSemiAxis * std::atan(std::tan(cnfLat) / std::cos(omega));
-  const Real v = majorSemiAxis * std::asinh(std::sin(omega) / std::sqrt(x));
-  const Real u_a = u / majorSemiAxis;
-  const Real v_a = v / majorSemiAxis;
-
-  // Equations (114)
-  Real sumX(0);
-  Real sumY(0);
-  Real t(2);
-
-  for (int i = 0; i < 8; 
-    i++, t += Real(2))
+  switch(ellps)
   {
-    sumX += t* alpha[i] * 
-      std::sin(t * u_a) * std::sinh(t * v_a);
-    sumY += t* alpha[i] * 
-      std::cos(t * u_a) * std::cosh(t * v_a);
+    case SPHEROID_GRS67: 
+        setFrom(Real(6378160), Real(1) / Real(298.247167427));
+        break;
+    case SPHEROID_SAD69: 
+        setFrom(Real(6378160), Real(1) / Real(298.25));
+        break;
+    case SPHEROID_WGS72: 
+        setFrom(Real(6378135), Real(1) / Real(298.26));
+        break;
+    case SPHEROID_GRS80:
+        setFrom(Real(6378137), Real(1) / Real(298.2572221009));
+        break;
+    case SPHEROID_WGS84:
+        setFrom(Real(6378137), Real(1) / Real(298.257223563));
+        break;
   }
-
-  const Real q = -sumX;
-  const Real p = Real(1) + sumY;
-
-  // Gauss-Schreiber scale factor Equation (116)
-  const Real scale = 
-    std::sqrt(Real(1) + std::tan(phiRad) * std::tan(phiRad)) * 
-    std::sqrt(Real(1) - std::sin(phiRad) * std::sin(phiRad) * eccentricitySqr) / 
-    std::sqrt(std::cos(omega) * std::cos(omega) + std::tan(cnfLat) * std::tan(cnfLat));
-
-  // conversion to TM scale factor 
-  return Real(0.9996) * (rectifyingRadius / majorSemiAxis) * std::hypot(q, p) * scale;
-#endif 
-}
-
-template<typename Real> 
-void Spheroid<Real>::setWgs84(){
-  setFrom(Real(6378137), Real(1) / Real(298.257223563));
-}
-
-template<typename Real> 
-void Spheroid<Real>::setGrs80(){
-  setFrom(Real(6378137), Real(1) / Real(298.2572221009));
 }
 
 template<typename Real> 
@@ -441,6 +405,15 @@ void Spheroid<Real>::utmToGeo(
 }
 
 template<typename Real> 
+Real Spheroid<Real>::utmScaleFactor(const Real& lonDeg) const
+/// abs(err) < 5.923E-07 compared to the full formulation
+{
+  int utmZone; 
+  Real omegaRad = utmCentralMeridian(lonDeg, utmZone) - Math::degToRad(lonDeg);
+  return Real(0.5035348161) * Math::sqr(omegaRad) + Real(0.9996);
+}
+
+template<typename Real> 
 void Spheroid<Real>::computeUtmParams()
 {
   // Most part will be evaluated at compile time.
@@ -663,7 +636,6 @@ const {
   return minorSemiAxis * A * (sigma - sigmaDelta);
 }
 
-} // ns geo
-
-#endif 
+} /// !namespace geo
+#endif /// !_Geodesy_h
 
