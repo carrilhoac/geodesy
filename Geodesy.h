@@ -59,14 +59,10 @@ private:
   Real alpha[8], beta[8];
 
 public:
-  Spheroid(             
-    Real majorSemiAxis_ = Real(6378137), // defaults to WGS-84 
-    Real flattening_    = Real(1) / Real(298.257223563)) 
-  {
-    setFrom(majorSemiAxis_, flattening_);
-  }
-  Spheroid(SPHEROID ellps) { set(ellps); }
+  Spheroid(SPHEROID ellps = SPHEROID_WGS84) { set(ellps); }
   void set(SPHEROID ellps);
+  Spheroid(Real majorSemiAxis_, Real flattening_) 
+    { setFrom(majorSemiAxis_, flattening_); }
   void setFrom(Real majorSemiAxis_, Real flattening_);
 
   // Conversion between Geodetic and Geocentric Cartesian coordinates,
