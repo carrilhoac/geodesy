@@ -34,6 +34,7 @@ namespace Math
 }
 
 enum SPHEROID {
+    SPHEROID_WGS66,
     SPHEROID_GRS67,
     SPHEROID_SAD69,
     SPHEROID_WGS72,
@@ -128,6 +129,9 @@ void Spheroid<Real>::set(SPHEROID ellps)
 {
   switch(ellps)
   {
+    case SPHEROID_WGS66:
+        setFrom(Real(6378145), Real(1) / Real(298.25));
+        break;
     case SPHEROID_GRS67: 
         setFrom(Real(6378160), Real(1) / Real(298.247167427));
         break;
