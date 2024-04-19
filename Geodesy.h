@@ -38,7 +38,8 @@ enum SPHEROID {
     SPHEROID_SAD69,
     SPHEROID_WGS72,
     SPHEROID_GRS80,
-    SPHEROID_WGS84
+    SPHEROID_WGS84,
+    SPHEROID_PZ90
 };
 
 // Templated because you might want to use long double.
@@ -145,6 +146,9 @@ void Spheroid<Real>::set(SPHEROID ellps)
         break;
     case SPHEROID_WGS84:
         setFrom(Real(6378137), Real(1) / Real(298.257223563));
+        break;
+    case SPHEROID_PZ90:
+        setFrom(Real(6378136), Real(1) / Real(298.257839303));
         break;
   }
 }
@@ -638,4 +642,3 @@ const {
 
 } /// !namespace geo
 #endif /// !_Geodesy_h
-
